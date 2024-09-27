@@ -1,0 +1,14 @@
+services:
+  db:
+    image: "postgres"
+    container_name: "db"
+    ports:
+      - "54333:5432"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_DB: ${DATABASE_NAME}
+volumes:
+  app:
+
