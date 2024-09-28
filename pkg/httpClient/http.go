@@ -1,6 +1,7 @@
 package httpClient
 
 import (
+	"crypto/tls"
 	"net/http"
 	"time"
 )
@@ -27,7 +28,11 @@ func SendRequest(url string) (*http.Response, error) {
 			return nil, rErr
 		}
 
-		res, err = Make(request, NewClient(ClientParams{}))
+		res, err = Make(request, NewClient(ClientParams{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
+		}))
 
 		if err != nil {
 			time.Sleep(backoff)

@@ -29,58 +29,56 @@ func Start() {
 	*/
 	for _, letter := range letters {
 		wg.Add(1)
-		go func(letter string) {
-			page := 1
-			defer wg.Done()
+		page := 1
+		defer wg.Done()
 
-			for {
-				// get the list of all persons on letter and page
-				// if it fails, continue on to the next one
-				list, err := getList(fmt.Sprintf("https://nestali.gov.hr/nestale-osobe-403/403?slovo=%s&page=%d", letter, page))
+		for {
+			// get the list of all persons on letter and page
+			// if it fails, continue on to the next one
+			list, err := getList(fmt.Sprintf("https://nestali.gov.hr/nestale-osobe-403/403?slovo=%s&page=%d", letter, page))
+			if err != nil {
+				log.Println(fmt.Errorf("failed to get list: letter: %s, page: %d: %w", letter, page, err))
+				break
+			}
+
+			// if the page that we are on does not have any entries, break from this loop and
+			// another letter
+			if len(list) == 0 {
+				break
+			}
+
+			for _, l := range list {
+				// get the name of the person so you could get the id (id is the website id)
+				name, err := htmlParser.Find(l, ".osoba-ime")
 				if err != nil {
-					log.Println(fmt.Sprintf("Failed to get list: letter: %s, page: %d", letter, page))
+					log.Println(fmt.Errorf("failed to find person: letter: %s, page: %d: %w", letter, page, err))
 					break
 				}
 
-				// if the page that we are on does not have any entries, break from this loop and
-				// another letter
-				if len(list) == 0 {
-					break
-				}
+				href := htmlParser.Attr("href", name.Attr)
+				if href != "" {
+					s := strings.Split(href, "=")
 
-				for _, l := range list {
-					// get the name of the person so you could get the id (id is the website id)
-					name, err := htmlParser.Find(l, ".osoba-ime")
+					personId := s[1]
+					tokens, image, err := getTokens(personId)
+
 					if err != nil {
-						log.Println(fmt.Sprintf("Failed to find person: letter: %s, page: %d", letter, page))
+						log.Println(fmt.Errorf("failed getting tokens: letter: %s, page: %d: %s; -> %w", letter, page, personId, err))
 						break
 					}
 
-					href := htmlParser.Attr("href", name.Attr)
-					if href != "" {
-						s := strings.Split(href, "=")
-
-						personId := s[1]
-						tokens, image, err := getTokens(personId)
-
-						if err != nil {
-							log.Println(fmt.Sprintf("Failed getting tokens: letter: %s, page: %d: %s; -> %v", letter, page, personId, err))
-							break
-						}
-
-						uniqueIdentifier := createUniqueIdentifier(tokens)
-						if err := tryDbOperation(tokens, personId, uniqueIdentifier, image); err != nil {
-							log.Println(err)
-							break
-						}
+					uniqueIdentifier := createUniqueIdentifier(tokens)
+					if err := tryDbOperation(tokens, personId, uniqueIdentifier, image); err != nil {
+						log.Println(err)
+						break
 					}
 				}
-
-				fmt.Printf("Finished letter %s; page %d\n", letter, page)
-
-				page += 1
 			}
-		}(letter)
+
+			fmt.Printf("Finished letter %s; page %d\n", letter, page)
+
+			page += 1
+		}
 	}
 
 	wg.Wait()
@@ -205,7 +203,8 @@ func getList(url string) ([]*html.Node, error) {
 	return final, nil
 }
 
-/**
+/*
+*
 Goes to the actual single page of the missing person and scrapps all the data that it can.
 It stores that data in an array. How to represent that data should be done later.
 

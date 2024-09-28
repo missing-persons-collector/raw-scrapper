@@ -3,8 +3,10 @@ package main
 import (
 	"github.com/joho/godotenv"
 	"log"
-	"missing-persons-scrapper/pkg/croatia"
+	"missing-persons-scrapper/pkg/countries/croatia"
+	"missing-persons-scrapper/pkg/countries/romania"
 	"missing-persons-scrapper/pkg/storage"
+	"sync"
 )
 
 func loadEnv() {
@@ -23,5 +25,19 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	croatia.Start()
+	if err := romania.Migrate(); err != nil {
+		log.Fatalln(err)
+	}
+
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		croatia.Start()
+	}()
+
+	go func() {
+		romania.Start()
+	}()
+
+	wg.Wait()
 }
