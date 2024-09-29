@@ -31,6 +31,15 @@ func Connect() {
 		log.Fatalln(fmt.Sprintf("Cannot connect to database: %s", err.Error()))
 	}
 
+	rawDb, err := db.DB()
+	if err != nil {
+		log.Fatalln(fmt.Sprintf("Cannot connect to database: %s", err.Error()))
+	}
+
+	if err := rawDb.Ping(); err != nil {
+		log.Fatalln(fmt.Sprintf("Cannot connect to database: %s", err.Error()))
+	}
+
 	DB = db
 }
 

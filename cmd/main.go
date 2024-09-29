@@ -6,8 +6,15 @@ import (
 	"missing-persons-scrapper/pkg/countries/croatia"
 	"missing-persons-scrapper/pkg/countries/romania"
 	"missing-persons-scrapper/pkg/storage"
-	"sync"
 )
+
+func main() {
+	loadEnv()
+	storage.Connect()
+	migrate()
+
+	run()
+}
 
 func loadEnv() {
 	err := godotenv.Load("../.env")
@@ -17,10 +24,15 @@ func loadEnv() {
 	}
 }
 
-func main() {
-	loadEnv()
-	storage.Connect()
+func run() {
+	p := newParallel()
+	p.add(func() { croatia.Start() })
+	p.add(func() { romania.Start() })
 
+	p.wait()
+}
+
+func migrate() {
 	if err := croatia.Migrate(); err != nil {
 		log.Fatalln(err)
 	}
@@ -28,16 +40,4 @@ func main() {
 	if err := romania.Migrate(); err != nil {
 		log.Fatalln(err)
 	}
-
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
-	go func() {
-		croatia.Start()
-	}()
-
-	go func() {
-		romania.Start()
-	}()
-
-	wg.Wait()
 }
